@@ -16,7 +16,7 @@ const supabase = createClient(
 
 const PORT = process.env.PORT || 5000;
 // Import Routes
-const authRoutes = require("./routes/auth");
+const authRoutes = require("./src/routes/auth");
 app.use("/api/auth", authRoutes);
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
