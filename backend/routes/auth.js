@@ -1,29 +1,75 @@
 const express = require("express");
 const router = express.Router();
-const { createClient } = require("@supabase/supabase-js");
-require("dotenv").config();
+const jwt = require('jsonwebtoken');
+const { body, validationResult } = require('express-validator');
+const User = require('../models/User');
+const auth = require('../middleware/auth');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
+// Middleware to validate request body
+const validateRequest = [
+  body('email').isEmail().normalizeEmail(),
+  body('password').isLength({ min: 6 }),
+];
+
+// Get current user data
+router.get("/me", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Protected route to verify token
+router.get("/protected", auth, (req, res) => {
+  res.json({ message: 'Token is valid' });
+});
 
 // **Register & Send Email Verification**
-router.post("/register", async (req, res) => {
-  const { email, password, username } = req.body;
+router.post("/register", validateRequest, async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-  // Sign up user (Supabase handles sending the email)
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { username } },
-  });
+    const { email, password, username } = req.body;
 
-  if (error) return res.status(400).json({ error: error.message });
+    // Check if user already exists
+    let user = await User.findOne({ email });
+    if (user) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
 
-  res
-    .status(201)
-    .json({ message: "Verification email sent! Check your inbox." });
+    // Create new user
+    user = new User({
+      username,
+      email,
+      password
+    });
+
+    await user.save();
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(201).json({
+      message: 'User registered successfully',
+      token
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 // **Verify User & Add to DB**
@@ -57,17 +103,42 @@ router.post("/verify", async (req, res) => {
 });
 
 // **Login User**
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+router.post("/login", validateRequest, async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+    const { email, password } = req.body;
 
-  if (error) return res.status(400).json({ error: error.message });
+    // Check if user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
 
-  res.json({ message: "Login successful!", token: data.session.access_token });
+    // Verify password
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      message: 'Logged in successfully',
+      token
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 module.exports = router;
