@@ -19,33 +19,45 @@ export const AuthProvider = ({ children }) => {
   // Check if user is already logged in
   useEffect(() => {
     const verifyToken = async () => {
-      if (token) {
+      const storedToken = localStorage.getItem("authToken");
+      if (storedToken) {
         try {
-          await getProtectedData(token);
-          setUser({ token });
+          // First verify if the token is valid
+          await getProtectedData(storedToken);
+          // Then get the user data
+          const userData = await verifyUser(storedToken);
+          setToken(storedToken);
+          setUser(userData);
         } catch (err) {
-          console.error("Invalid token:", err);
+          console.error("Token verification failed:", err);
           localStorage.removeItem("authToken");
           setToken(null);
+          setUser(null);
         }
       }
       setLoading(false);
     };
 
     verifyToken();
-  }, [token]);
+  }, []);
 
   const login = async (email, password) => {
     try {
       setError(null);
       setLoading(true);
       const data = await apiLogin(email, password);
-      localStorage.setItem("authToken", data.token);
-      setToken(data.token);
-      setUser({ token: data.token });
+      if (data && data.token) {
+        localStorage.setItem("authToken", data.token);
+        setToken(data.token);
+        // Get user data after successful login
+        const userData = await verifyUser(data.token);
+        setUser(userData);
+      } else {
+        throw new Error("No token received from server");
+      }
       return data;
     } catch (err) {
-      setError(err);
+      setError(err.message || "Login failed");
       throw err;
     } finally {
       setLoading(false);
@@ -59,7 +71,7 @@ export const AuthProvider = ({ children }) => {
       const data = await apiRegister(email, password, username);
       return data;
     } catch (err) {
-      setError(err);
+      setError(err.message || "Registration failed");
       throw err;
     } finally {
       setLoading(false);

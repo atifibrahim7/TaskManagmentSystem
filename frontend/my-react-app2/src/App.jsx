@@ -11,6 +11,7 @@ import { AuthProvider } from "./context/AuthContext";
 import Login from "./components/Auth/Login";
 import Register from "./components/Auth/Register";
 import Dashboard from "./components/Dashboard";
+import Teams from "./components/Teams";
 import ProtectedRoute from "./components/Auth/ProtectedRoute";
 
 // Styles
@@ -29,6 +30,7 @@ function App() {
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/teams" element={<Teams />} />
           </Route>
 
           {/* Redirect to login by default */}
