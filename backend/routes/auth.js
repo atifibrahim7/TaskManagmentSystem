@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
@@ -14,7 +15,7 @@ const validateRequest = [
 // Get current user data
 router.get("/me", auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select('-password');
+    const user = await User.findById(req.user.id).select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -118,7 +119,7 @@ router.post("/login", validateRequest, async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Verify password
+    // Verify password using the User model's method
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
@@ -132,8 +133,12 @@ router.post("/login", validateRequest, async (req, res) => {
     );
 
     res.json({
-      message: 'Logged in successfully',
-      token
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username
+      }
     });
   } catch (error) {
     console.error(error);

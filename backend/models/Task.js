@@ -6,6 +6,11 @@ const taskSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  team: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Team',
+    required: true
+  },
   title: {
     type: String,
     required: true,
@@ -25,10 +30,22 @@ const taskSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
-  completed: {
-    type: Boolean,
-    default: false
+  status: {
+    type: String,
+    enum: ['Not Started', 'In Progress', 'Completed'],
+    default: 'Not Started'
   },
+  assigned_members: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    status: {
+      type: String,
+      enum: ['Not Started', 'In Progress', 'Completed'],
+      default: 'Not Started'
+    }
+  }],
   created_at: {
     type: Date,
     default: Date.now

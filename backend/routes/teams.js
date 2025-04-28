@@ -11,8 +11,8 @@ router.post('/', auth, async (req, res) => {
     const { name } = req.body;
     const team = new Team({
       name,
-      creator: req.user.userId,
-      members: [{ user: req.user.userId, role: 'admin', status: 'accepted' }]
+      creator: req.user.id,
+      members: [{ user: req.user.id, role: 'admin', status: 'accepted' }]
     });
     await team.save();
     res.status(201).json(team);
@@ -24,15 +24,19 @@ router.post('/', auth, async (req, res) => {
 // Get all teams for a user (both created and member of)
 router.get('/', auth, async (req, res) => {
   try {
+    console.log('Fetching teams for user:', req.user.id);
     const teams = await Team.find({
       $or: [
-        { creator: req.user.userId },
-        { 'members.user': req.user.userId }
+        { creator: req.user.id },
+        { 'members.user': req.user.id }
       ]
     }).populate('creator', 'username email')
       .populate('members.user', 'username email');
+    
+    console.log('Found teams:', teams);
     res.json(teams);
   } catch (error) {
+    console.error('Error fetching teams:', error);
     res.status(500).json({ message: 'Error fetching teams', error: error.message });
   }
 });
@@ -41,7 +45,7 @@ router.get('/', auth, async (req, res) => {
 router.post('/:teamId/invite', auth, async (req, res) => {
   try {
     const { email } = req.body;
-    const team = await Team.findOne({ _id: req.params.teamId, creator: req.user.userId });
+    const team = await Team.findOne({ _id: req.params.teamId, creator: req.user.id });
     
     if (!team) {
       return res.status(404).json({ message: 'Team not found or unauthorized' });
@@ -86,7 +90,7 @@ router.patch('/:teamId/respond', auth, async (req, res) => {
     const { status } = req.body; // status can be 'accepted' or 'rejected'
     const team = await Team.findOne({
       _id: req.params.teamId,
-      'members.user': req.user.userId,
+      'members.user': req.user.id,
       'members.status': 'pending'
     });
 
@@ -95,7 +99,7 @@ router.patch('/:teamId/respond', auth, async (req, res) => {
     }
 
     const memberIndex = team.members.findIndex(
-      member => member.user.toString() === req.user.userId
+      member => member.user.toString() === req.user.id
     );
 
     team.members[memberIndex].status = status;
@@ -118,7 +122,7 @@ router.get('/invitations', auth, async (req, res) => {
     const teams = await Team.find({
       'members': {
         $elemMatch: {
-          user: req.user.userId,
+          user: req.user.id,
           status: 'pending'
         }
       }
@@ -141,7 +145,7 @@ router.get('/search-users', auth, async (req, res) => {
     // Search users by username or email, excluding the current user
     const users = await User.find({
       $and: [
-        { _id: { $ne: req.user.userId } }, // Exclude current user
+        { _id: { $ne: req.user.id } }, // Exclude current user
         {
           $or: [
             { username: { $regex: query, $options: 'i' } },
@@ -176,8 +180,8 @@ router.post('/:teamId/members', auth, async (req, res) => {
     }
 
     // Check if user has permission to add members
-    if (team.creator.toString() !== req.user.userId && 
-        !team.members.some(m => m.user.toString() === req.user.userId && m.role === 'admin')) {
+    if (team.creator.toString() !== req.user.id && 
+        !team.members.some(m => m.user.toString() === req.user.id && m.role === 'admin')) {
       return res.status(403).json({ message: 'Not authorized to add members' });
     }
 
