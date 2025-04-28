@@ -19,6 +19,10 @@ const Dashboard = () => {
   const [editingTask, setEditingTask] = useState(null);
   const [showEditTask, setShowEditTask] = useState(false);
   const [deletingTaskId, setDeletingTaskId] = useState(null);
+  const [taskComments, setTaskComments] = useState({});
+  const [showComments, setShowComments] = useState({});
+  const [commentText, setCommentText] = useState({});
+  const [addingComment, setAddingComment] = useState(null);
 
   const [taskForm, setTaskForm] = useState({
     title: "",
@@ -379,6 +383,140 @@ const Dashboard = () => {
         member.user && member.user._id === user._id && member.role === 'admin'
       ))
     );
+  };
+
+  // Fetch comments for a task
+  const fetchComments = async (taskId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/comments/task/${taskId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch comments');
+      }
+      
+      const comments = await response.json();
+      setTaskComments(prev => ({
+        ...prev,
+        [taskId]: comments
+      }));
+    } catch (err) {
+      console.error('Error fetching comments:', err);
+    }
+  };
+
+  // Toggle comments section visibility
+  const toggleComments = (taskId) => {
+    setShowComments(prev => {
+      const isCurrentlyShown = prev[taskId];
+      
+      // If we're showing comments, fetch them
+      if (!isCurrentlyShown) {
+        fetchComments(taskId);
+      }
+      
+      return {
+        ...prev,
+        [taskId]: !isCurrentlyShown
+      };
+    });
+    
+    // Initialize comment text field if needed
+    if (!commentText[taskId]) {
+      setCommentText(prev => ({
+        ...prev,
+        [taskId]: ''
+      }));
+    }
+  };
+
+  // Handle comment text input
+  const handleCommentChange = (taskId, text) => {
+    setCommentText(prev => ({
+      ...prev,
+      [taskId]: text
+    }));
+  };
+
+  // Add a comment to a task
+  const addComment = async (taskId) => {
+    if (!commentText[taskId]?.trim()) return;
+    
+    setAddingComment(taskId);
+    try {
+      const response = await fetch(`http://localhost:5000/api/comments/task/${taskId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          text: commentText[taskId]
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to add comment');
+      }
+      
+      const newComment = await response.json();
+      
+      // Add new comment to state
+      setTaskComments(prev => ({
+        ...prev,
+        [taskId]: [newComment, ...(prev[taskId] || [])]
+      }));
+      
+      // Clear comment text
+      setCommentText(prev => ({
+        ...prev,
+        [taskId]: ''
+      }));
+    } catch (err) {
+      console.error('Error adding comment:', err);
+      setError('Failed to add comment');
+    } finally {
+      setAddingComment(null);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Helper function to get role badge styles
+  const getRoleBadgeStyle = (role) => {
+    switch (role) {
+      case 'creator':
+        return 'bg-purple-500/30 text-purple-300 border-purple-500';
+      case 'admin':
+        return 'bg-blue-500/30 text-blue-300 border-blue-500';
+      default:
+        return 'bg-green-500/30 text-green-300 border-green-500';
+    }
+  };
+
+  // Helper function to get role display name
+  const getRoleDisplayName = (role) => {
+    switch (role) {
+      case 'creator':
+        return 'Creator';
+      case 'admin':
+        return 'Admin';
+      default:
+        return 'Member';
+    }
   };
 
   if (loading) {
@@ -751,6 +889,67 @@ const Dashboard = () => {
                     </>
                   )}
                 </div>
+              </div>
+              
+              {/* Comments Section */}
+              <div className="mt-4 pt-4 border-t border-gray-700">
+                <button 
+                  onClick={() => toggleComments(task._id)}
+                  className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                  {showComments[task._id] ? 'Hide Comments' : 'Show Comments'}
+                </button>
+                
+                {showComments[task._id] && (
+                  <div className="mt-3">
+                    {/* Add a comment */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={commentText[task._id] || ''}
+                        onChange={(e) => handleCommentChange(task._id, e.target.value)}
+                        placeholder="Add a comment..."
+                        className="flex-1 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white text-sm"
+                      />
+                      <button
+                        onClick={() => addComment(task._id)}
+                        disabled={addingComment === task._id || !commentText[task._id]?.trim()}
+                        className={`px-3 py-2 bg-indigo-600/70 text-white rounded-lg hover:bg-indigo-600 transition-colors text-sm ${(addingComment === task._id || !commentText[task._id]?.trim()) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {addingComment === task._id ? 'Posting...' : 'Post'}
+                      </button>
+                    </div>
+                    
+                    {/* Comments list */}
+                    <div className="mt-3 space-y-3 max-h-60 overflow-y-auto">
+                      {taskComments[task._id]?.length > 0 ? (
+                        taskComments[task._id].map(comment => (
+                          <div key={comment._id} className="p-3 bg-gray-700/30 rounded-lg">
+                            <div className="flex justify-between items-start">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-indigo-400 text-sm">
+                                  {comment.user.username || comment.user.email}
+                                </span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full border ${getRoleBadgeStyle(comment.userRole)}`}>
+                                  {getRoleDisplayName(comment.userRole)}
+                                </span>
+                              </div>
+                              <span className="text-xs text-gray-400">
+                                {formatDate(comment.created_at)}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-white text-sm">{comment.text}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-gray-400 text-sm">No comments yet.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}
