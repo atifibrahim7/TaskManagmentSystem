@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Teams = () => {
   const { token, user } = useAuth();
+  const navigate = useNavigate();
   const [teams, setTeams] = useState([]);
   const [invitations, setInvitations] = useState([]);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
@@ -207,7 +209,29 @@ const Teams = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
+      <nav className="bg-gray-800/80 backdrop-blur-sm border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold text-white">Teams</h1>
+            <div className="flex gap-4">
+              <button
+                onClick={() => navigate(-1)}
+                className="px-4 py-2 text-white bg-transparent border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={() => setShowCreateTeam(true)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Create Team
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold text-white">Teams</h2>
