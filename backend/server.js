@@ -5,6 +5,7 @@ const cors = require("cors");
 const authRoutes = require("./routes/auth");
 const taskRoutes = require("./routes/tasks");
 const teamRoutes = require("./routes/teams");
+const commentRoutes = require("./routes/comments");
 
 const app = express();
 
@@ -36,6 +37,7 @@ connectDB();
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/teams", teamRoutes);
+app.use("/api/comments", commentRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
