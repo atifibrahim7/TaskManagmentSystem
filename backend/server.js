@@ -6,6 +6,7 @@ const authRoutes = require("./routes/auth");
 const taskRoutes = require("./routes/tasks");
 const teamRoutes = require("./routes/teams");
 const commentRoutes = require("./routes/comments");
+const reportRoutes = require("./routes/reports");
 
 const app = express();
 
@@ -21,7 +22,7 @@ const connectDB = async () => {
       useUnifiedTopology: true,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
-      family: 4
+      family: 4,
     });
     console.log("Connected to MongoDB");
   } catch (error) {
@@ -38,6 +39,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/comments", commentRoutes);
+app.use("/api/reports", reportRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
