@@ -542,6 +542,7 @@ const Dashboard = () => {
               </button>
               <button
                 onClick={() => setShowAddTask(!showAddTask)}
+                data-testid="create-task-button"
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
               >
                 {showAddTask ? "Cancel" : "Add Task"}
@@ -579,6 +580,7 @@ const Dashboard = () => {
                   Team
                 </label>
                 <select
+                  data-testid="task-team"
                   value={taskForm.teamId}
                   onChange={(e) => handleTeamSelect(e.target.value)}
                   className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white"
@@ -599,20 +601,25 @@ const Dashboard = () => {
                     Assign to Team Members
                   </label>
                   <div className="space-y-2">
-                    {teamMembers.map(member => (
-                      <div key={member.user._id} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id={`member-${member.user._id}`}
-                          checked={selectedMembers.includes(member.user._id)}
-                          onChange={() => handleMemberSelect(member.user._id)}
-                          className="mr-2"
-                        />
-                        <label htmlFor={`member-${member.user._id}`} className="text-white">
-                          {member.user.username || member.user.email}
-                        </label>
-                      </div>
-                    ))}
+                    {teamMembers.length > 0 ? (
+                      teamMembers.map((member, index) => (
+                        <div key={member.user._id} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            data-testid={`task-member-${index + 1}`}
+                            id={`member-${member.user._id}`}
+                            checked={selectedMembers.includes(member.user._id)}
+                            onChange={() => handleMemberSelect(member.user._id)}
+                            className="mr-2"
+                          />
+                          <label htmlFor={`member-${member.user._id}`} className="text-white">
+                            {member.user.username || member.user.email}
+                          </label>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-400">No team members available</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -622,6 +629,7 @@ const Dashboard = () => {
                   Title
                 </label>
                 <input
+                  data-testid="task-title"
                   type="text"
                   value={taskForm.title}
                   onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
@@ -635,6 +643,7 @@ const Dashboard = () => {
                   Description
                 </label>
                 <textarea
+                  data-testid="task-description"
                   value={taskForm.description}
                   onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
                   className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white"
@@ -649,6 +658,7 @@ const Dashboard = () => {
                     Deadline
                   </label>
                   <input
+                    data-testid="task-deadline"
                     type="date"
                     value={taskForm.deadline}
                     onChange={(e) => setTaskForm({ ...taskForm, deadline: e.target.value })}
@@ -662,6 +672,7 @@ const Dashboard = () => {
                     Priority
                   </label>
                   <select
+                    data-testid="task-priority"
                     value={taskForm.priority}
                     onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
                     className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white"
@@ -675,6 +686,7 @@ const Dashboard = () => {
               </div>
 
               <button
+                data-testid="task-submit"
                 type="submit"
                 className="w-full md:w-auto px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
               >

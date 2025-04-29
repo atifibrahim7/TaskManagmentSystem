@@ -6,8 +6,10 @@ import { Input } from "../UI/Input";
 import { Card } from "../UI/Card";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -15,20 +17,47 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    // Clear error when user starts typing
+    if (error) setError("");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const { email, password } = formData;
+    
+    // Validation checks
     if (!email || !password) {
       setError("Please enter both email and password");
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setError("Please enter a valid email address");
       return;
     }
 
     try {
       setIsLoading(true);
       setError("");
-      await login(email, password);
-      navigate("/dashboard");
+      const response = await login(email, password);
+      if (response && response.token) {
+        navigate("/dashboard", { replace: true });
+      } else {
+        setError("Login failed. Please try again.");
+      }
     } catch (err) {
-      setError(err.toString());
+      setError(err.message || "Invalid credentials");
     } finally {
       setIsLoading(false);
     }
@@ -82,77 +111,81 @@ const Login = () => {
         <Card className="bg-white shadow-lg rounded-lg p-6">
           <div className="text-center mb-6">
             <h2 className="text-xl font-semibold text-gray-800">
-              Choose or add another account
+              Welcome back
             </h2>
+            <p className="mt-2 text-gray-600">Please sign in to your account</p>
           </div>
 
           {error && (
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">
+            <div data-testid="error-message" className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">
               {error}
             </div>
           )}
 
-          {/* Account selection */}
-
-          <div className="border-t border-gray-200 pt-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
               <Input
                 label="Email"
                 id="email"
+                name="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={formData.email}
+                onChange={handleChange}
                 className="w-full border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter your email"
-                required
+                data-testid="login-username"
               />
+            </div>
 
+            <div>
               <Input
                 label="Password"
                 id="password"
+                name="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={handleChange}
                 className="w-full border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter your password"
-                required
+                data-testid="login-password"
               />
+            </div>
 
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label
-                  htmlFor="remember-me"
-                  className="ml-2 block text-sm text-gray-700"
-                >
-                  Remember me
-                </label>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md"
-                disabled={isLoading}
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label
+                htmlFor="remember-me"
+                className="ml-2 block text-sm text-gray-700"
               >
-                {isLoading ? "Signing in..." : "Log in"}
-              </Button>
+                Remember me
+              </label>
+            </div>
 
-              <div className="text-center">
-                <Link
-                  to="/register"
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  New to this website? Sign up!
-                </Link>
-              </div>
-            </form>
-          </div>
+            <Button
+              type="submit"
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md"
+              disabled={isLoading}
+              data-testid="login-submit"
+            >
+              {isLoading ? "Signing in..." : "Log in"}
+            </Button>
+
+            <div className="text-center">
+              <Link
+                to="/register"
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                New to this website? Sign up!
+              </Link>
+            </div>
+          </form>
         </Card>
 
         {/* Footer */}
