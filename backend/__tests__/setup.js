@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
+const mongoose = require("mongoose");
+const { MongoMemoryServer } = require("mongodb-memory-server");
 
 let mongod;
 
@@ -25,9 +25,9 @@ afterAll(async () => {
 });
 
 // Mock the user authentication middleware
-jest.mock('../middleware/auth', () => {
+jest.mock("../middleware/auth", () => {
   return (req, res, next) => {
-    req.user = { id: '60d0fe4f5311236168a109ca' }; // Mock user ID
+    req.user = { id: "60d0fe4f5311236168a109ca" }; // Mock user ID
     next();
   };
 });
