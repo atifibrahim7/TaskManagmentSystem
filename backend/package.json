@@ -4,8 +4,12 @@
   "description": "Task Management System Backend",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:ci": "jest --ci --coverage",
+    "test:coverage": "jest --coverage --collectCoverageFrom='src/**/*.js' --coverageReporters='text' --coverageReporters='html' --coverageReporters='json' --coverageReporters='lcov'"
   },
   "keywords": [],
   "author": "",
@@ -15,11 +19,17 @@
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "express-validator": "^7.0.1",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.0.3",
-    "express-validator": "^7.0.1"
+    "mongoose": "^8.0.3"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "@types/jest": "^29.5.14",
+    "@types/supertest": "^6.0.3",
+    "jest": "^29.7.0",
+    "jest-mock-express": "^0.1.1",
+    "mongodb-memory-server": "^10.1.4",
+    "nodemon": "^3.0.2",
+    "supertest": "^7.1.0"
   }
 }
