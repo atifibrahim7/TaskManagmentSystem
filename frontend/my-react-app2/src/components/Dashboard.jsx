@@ -23,6 +23,7 @@ const Dashboard = () => {
   const [showComments, setShowComments] = useState({});
   const [commentText, setCommentText] = useState({});
   const [addingComment, setAddingComment] = useState(null);
+  const [activeTab, setActiveTab] = useState("active"); // new state for active tab: 'active' or 'completed'
 
   const [taskForm, setTaskForm] = useState({
     title: "",
@@ -43,6 +44,25 @@ const Dashboard = () => {
   });
 
   const navigate = useNavigate();
+
+  // Helper function to check if a task is completed (all assigned members have completed it)
+  const isTaskCompleted = (task) => {
+    if (!task.assigned_members || task.assigned_members.length === 0) {
+      return false;
+    }
+    return task.assigned_members.every(
+      (member) => member.status === "Completed"
+    );
+  };
+
+  // Filter tasks based on completion status
+  const getFilteredTasks = () => {
+    if (activeTab === "active") {
+      return tasks.filter((task) => !isTaskCompleted(task));
+    } else {
+      return tasks.filter((task) => isTaskCompleted(task));
+    }
+  };
 
   useEffect(() => {
     fetchTasks();
@@ -599,6 +619,12 @@ const Dashboard = () => {
                 Teams
               </button>
               <button
+                onClick={() => navigate("/reports")}
+                className="px-4 py-2 text-white bg-transparent border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Reports
+              </button>
+              <button
                 onClick={handleLogout}
                 className="px-4 py-2 text-white bg-transparent border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors"
               >
@@ -909,8 +935,54 @@ const Dashboard = () => {
           </div>
         )}
 
+        {/* Task tabs navigation */}
+        <div className="mb-6">
+          <div className="flex border-b border-gray-700">
+            <button
+              onClick={() => setActiveTab("active")}
+              className={`px-6 py-3 font-medium text-sm transition-colors ${
+                activeTab === "active"
+                  ? "border-b-2 border-indigo-500 text-indigo-400"
+                  : "text-gray-400 hover:text-gray-300"
+              }`}
+            >
+              Active Tasks
+            </button>
+            <button
+              onClick={() => setActiveTab("completed")}
+              className={`px-6 py-3 font-medium text-sm transition-colors ${
+                activeTab === "completed"
+                  ? "border-b-2 border-green-500 text-green-400"
+                  : "text-gray-400 hover:text-gray-300"
+              }`}
+            >
+              Completed Tasks
+            </button>
+          </div>
+        </div>
+
+        {/* Conditional messages for empty task lists */}
+        {getFilteredTasks().length === 0 && (
+          <div className="text-center py-12">
+            {activeTab === "active" ? (
+              <div className="text-gray-400">
+                <p className="text-lg">You don't have any active tasks.</p>
+                <p className="mt-2">Create a new task to get started!</p>
+              </div>
+            ) : (
+              <div className="text-gray-400">
+                <p className="text-lg">No completed tasks yet.</p>
+                <p className="mt-2">
+                  Tasks will appear here when all assigned members complete
+                  them.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid gap-4">
-          {tasks.map((task) => (
+          {getFilteredTasks().map((task) => (
             <div
               key={task._id}
               className="p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700"
