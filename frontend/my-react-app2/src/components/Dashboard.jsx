@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getProtectedData } from "../services/api";
@@ -7,11 +7,11 @@ import { Card } from "./UI/Card";
 import { Input } from "./UI/Input";
 
 const Dashboard = () => {
+  // ...existing state variables
   const { user, token, logout } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [teams, setTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
-  const [teamMembers, setTeamMembers] = useState([]);
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -64,9 +64,21 @@ const Dashboard = () => {
     }
   };
 
+  // New state variables for mentions and notifications
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [mentionSuggestions, setMentionSuggestions] = useState([]);
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [mentionSearchText, setMentionSearchText] = useState("");
+  const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 });
+  const [currentTaskForMention, setCurrentTaskForMention] = useState(null);
+  const commentInputRefs = useRef({});
+
   useEffect(() => {
     fetchTasks();
     fetchTeams();
+    fetchNotifications(); // Added notification fetching
   }, [token]);
 
   const fetchTasks = async () => {
@@ -97,6 +109,106 @@ const Dashboard = () => {
       setTeams(data);
     } catch (err) {
       console.error("Failed to fetch teams:", err);
+    }
+  };
+
+  // Fetch notifications for the current user
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/comments/notifications",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch notifications");
+      }
+
+      const notificationsData = await response.json();
+      setNotifications(notificationsData);
+
+      // Calculate unread count
+      const unread = notificationsData.filter(
+        (notification) => !notification.read
+      ).length;
+      setUnreadCount(unread);
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    }
+  };
+
+  // Mark notifications as read
+  const markNotificationsAsRead = async (notificationIds) => {
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/comments/notifications/read",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ notificationIds }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to mark notifications as read");
+      }
+
+      // Update local state to mark notifications as read
+      setNotifications((prev) =>
+        prev.map((notification) =>
+          notificationIds.includes(notification._id)
+            ? { ...notification, read: true }
+            : notification
+        )
+      );
+
+      // Update unread count
+      setUnreadCount((prev) => prev - notificationIds.length);
+    } catch (err) {
+      console.error("Error marking notifications as read:", err);
+    }
+  };
+
+  // Handle notification click
+  const handleNotificationClick = (notification) => {
+    // Find the task related to this notification
+    const task = tasks.find((t) => t._id === notification.task._id);
+
+    if (task) {
+      // Show comments for this task
+      setShowComments((prev) => ({ ...prev, [task._id]: true }));
+
+      // Fetch comments if not already loaded
+      if (!taskComments[task._id]) {
+        fetchComments(task._id);
+      }
+
+      // Mark the notification as read
+      if (!notification.read) {
+        markNotificationsAsRead([notification._id]);
+      }
+
+      // Close notifications panel
+      setShowNotifications(false);
+
+      // Scroll to the task (add id to task element)
+      setTimeout(() => {
+        const taskElement = document.getElementById(`task-${task._id}`);
+        if (taskElement) {
+          taskElement.scrollIntoView({ behavior: "smooth", block: "center" });
+          taskElement.classList.add("highlight-task");
+          setTimeout(() => {
+            taskElement.classList.remove("highlight-task");
+          }, 2000);
+        }
+      }, 100);
     }
   };
 
@@ -598,7 +710,101 @@ const Dashboard = () => {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-white">TaskMaster</h1>
-            <div className="flex gap-4">
+            <div className="flex gap-4 items-center">
+              {/* Notification Bell */}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setShowNotifications(!showNotifications);
+                    // Mark all as read when closing
+                    if (showNotifications && unreadCount > 0) {
+                      const unreadIds = notifications
+                        .filter((n) => !n.read)
+                        .map((n) => n._id);
+                      if (unreadIds.length) {
+                        markNotificationsAsRead(unreadIds);
+                      }
+                    }
+                  }}
+                  className="text-white p-2 rounded-full hover:bg-gray-700 relative"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                    />
+                  </svg>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Notifications Dropdown */}
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 bg-gray-800 border border-gray-700 shadow-lg rounded-lg z-50">
+                    <div className="p-3 border-b border-gray-700 flex justify-between items-center">
+                      <h3 className="text-white font-medium">Notifications</h3>
+                      {notifications.some((n) => !n.read) && (
+                        <button
+                          onClick={() => {
+                            const unreadIds = notifications
+                              .filter((n) => !n.read)
+                              .map((n) => n._id);
+                            markNotificationsAsRead(unreadIds);
+                          }}
+                          className="text-xs text-indigo-400 hover:text-indigo-300"
+                        >
+                          Mark all as read
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length > 0 ? (
+                        notifications.map((notification) => (
+                          <div
+                            key={notification._id}
+                            onClick={() =>
+                              handleNotificationClick(notification)
+                            }
+                            className={`p-3 border-b border-gray-700 hover:bg-gray-700/50 cursor-pointer flex ${
+                              !notification.read ? "bg-gray-700/20" : ""
+                            }`}
+                          >
+                            <div className="w-2 self-stretch mr-2 flex-shrink-0">
+                              {!notification.read && (
+                                <div className="w-2 h-2 rounded-full bg-indigo-500 mt-2"></div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm text-white">
+                                {notification.text}
+                              </p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {formatDate(notification.created_at)}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-4 text-center text-gray-400">
+                          No notifications
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={() => navigate(-1)}
                 className="px-4 py-2 text-white bg-transparent border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors"
@@ -986,6 +1192,7 @@ const Dashboard = () => {
             <div
               key={task._id}
               className="p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700"
+              id={`task-${task._id}`}
             >
               <div className="flex justify-between items-start">
                 <div>
@@ -1111,15 +1318,17 @@ const Dashboard = () => {
                 {showComments[task._id] && (
                   <div className="mt-3">
                     {/* Add a comment */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 relative">
                       <input
                         type="text"
                         value={commentText[task._id] || ""}
                         onChange={(e) =>
                           handleCommentChange(task._id, e.target.value)
                         }
-                        placeholder="Add a comment..."
+                        placeholder="Add a comment... (use @ to mention team members)"
                         className="flex-1 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white text-sm"
+                        ref={(el) => (commentInputRefs.current[task._id] = el)}
+                        onInput={(e) => handleCommentInput(task._id, e)}
                       />
                       <button
                         onClick={() => addComment(task._id)}
@@ -1136,6 +1345,37 @@ const Dashboard = () => {
                       >
                         {addingComment === task._id ? "Posting..." : "Post"}
                       </button>
+
+                      {/* Mention suggestions dropdown */}
+                      {showMentionSuggestions &&
+                        currentTaskForMention?._id === task._id && (
+                          <div className="absolute left-0 top-10 mt-2 w-64 max-h-48 overflow-y-auto bg-gray-800 border border-gray-700 shadow-lg rounded-lg z-10">
+                            <div className="p-2 border-b border-gray-700">
+                              <p className="text-sm text-gray-400">
+                                Mention a team member
+                              </p>
+                            </div>
+                            <div>
+                              {mentionSuggestions.length > 0 ? (
+                                mentionSuggestions.map((member) => (
+                                  <button
+                                    key={member.id}
+                                    onClick={() =>
+                                      insertMention(member.username)
+                                    }
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white text-sm"
+                                  >
+                                    @{member.username}
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="p-3 text-center text-gray-400 text-sm">
+                                  No matching team members
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                     </div>
 
                     {/* Comments list */}
