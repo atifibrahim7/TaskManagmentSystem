@@ -850,6 +850,13 @@ const Dashboard = () => {
                         Team: {task.team.name}
                       </span>
                     )}
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      task.priority === 'High' ? 'bg-red-500/20 text-red-400 border border-red-500' : 
+                      task.priority === 'Medium' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500' : 
+                      'bg-blue-500/20 text-blue-400 border border-blue-500'
+                    }`}>
+                      {task.priority}
+                    </span>
                   </div>
                   <div className="mt-2">
                     <p className="text-sm text-gray-400">Assigned to:</p>
